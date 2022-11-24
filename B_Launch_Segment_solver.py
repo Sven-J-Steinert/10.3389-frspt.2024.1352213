@@ -4,6 +4,7 @@ import numpy as np
 import sys
 from ast import literal_eval
 import random
+from itertools import repeat
 
 
 ########################################################################################################
@@ -33,7 +34,7 @@ from multiprocessing import Pool
 
 # global constants
 
-r_moon = 1737400    # [m] volumetric mean radius of the moon
+r_moon = 1737400    # [m] volumetric mean radius of the moon = reference height from heightmap
 m_moon = 0.07346e24 # [kg] mass of the moon
 G = 6.67430e-11 # Gravitational constant
 
@@ -200,15 +201,17 @@ def acc_propulsion(m,m_flow,EEV):
     
 
 class PID_Controller:
-  def __init__(self, set_alt , t_step):
+  def __init__(self, set_alt , t_step, p_val, i_val, d_val):
     
     # variables
     self.int_sum = 0
     self.e_old = None
     self.t_step = t_step
     self.set_alt = set_alt
-
-
+    self.p_val = p_val # 2
+    self.i_val = i_val # 0.1
+    self.d_val = d_val # 10
+    
   def step(self,pos):
     # calculate error
 
@@ -226,20 +229,21 @@ class PID_Controller:
     self.e_old = e
     
     # Controller formular
-    u =  2*e + 10 * d_val + 0.1 * self.int_sum
+    u =  self.p_val *e + self.d_val * d_val + self.i_val * self.int_sum
     
     # sigmoid for mapping
     try:
-        exp = math.exp(-0.5 *u)
+        exp = math.exp(-0.001 *u)
     except OverflowError:
         exp = float('inf')
     
     sigm = (2/(1 + exp) ) -1
     
-    # +/-20° freedom
-    alpha = -20 * sigm
+    # +/-60° freedom
+    freedom = 20 # [°] in r_sys
+    alpha = freedom * sigm
 
-    dir_n = dir_from_angle(90+alpha)
+    dir_n = dir_from_angle(90-alpha)
     
     # transform from r_sys to x_sys
     dir_n_xy = xy_sys(dir_n, pos)
@@ -281,15 +285,36 @@ def log(csv_writer,time,pos,vel,acc,m,dir_n):
     # logging results only every x seconds
     if (time*1000)%(x) == 0:
         write_data_row(csv_writer,time,pos,vel,acc,m,dir_n)
+        
+def f_lin_p_val(start_altitude):
+    val_min = 1.96     # for lowest altitude -9115
+    val_max = 16.878    # for highest altitude 10775
+    dx = 10775 + 9115
+    dy = val_max - val_min
+    n = val_max - (dy/dx) * 10775 # plugged point in
+    
+    lin_interpol = (dy/dx) * start_altitude + n
+    
+    return lin_interpol
+
+def f_lin_d_val(start_altitude):
+    val_min = 60     # for lowest altitude -9115
+    val_max = 300    # for highest altitude 10775
+    dx = 10775 + 9115
+    dy = val_max - val_min
+    n = val_max - (dy/dx) * 10775 # plugged point in
+    
+    lin_interpol = (dy/dx) * start_altitude + n
+    
+    return lin_interpol
 
 # SIMULATION
 #@jit(nopython=False,forceobj=True)
-def simulation(t_step,target_altitude,mass_dry,mass_full):
+def simulation(t_step,start_altitude,target_altitude,mass_dry,mass_full,m_flow,single_mode):
 
     # set launch carrier properties
     # EL3 - European Large Logistics Lander
     mass_fuel = mass_full - mass_dry # kg
-    m_flow = 15 #6.8 # [kg/s] massflow
     I_sp = 400 # [s] specific impulse
     g_0 = 9.80665 # [kg/s²] standard gravity
     EEV = np.array(I_sp * g_0, dtype=np.float64) # [m/s] effective exhaust velocity
@@ -315,7 +340,7 @@ def simulation(t_step,target_altitude,mass_dry,mass_full):
     m = mass_full  # [kg]
 
     # position
-    pos = np.array([0,r_moon,0], dtype=np.float64) # [m]
+    pos = np.array([0,r_moon + start_altitude,0], dtype=np.float64) # [m]
 
     # velocity
     #add ground speed vel
@@ -407,101 +432,13 @@ def simulation(t_step,target_altitude,mass_dry,mass_full):
         log(csv_writer,time,pos,vel,acc,m,dir_n) # log every x [ms]
 
     phase3_end = time
-    """
-    print(f'Phase 3 finished at {phase3_end} s')
-    print(f'> fuel mass used until here {mass_full - m} kg')
-
-
-
-    # Phase 4.0: Orbit injection - bring vel_r = 0
-    print('''
-    ┌───────────┬──────────────────────────────────┐
-    │ Phase 4.0 │   80° burn, set target_altitude  │
-    └───────────┴──────────────────────────────────┘''')
-    """
-    angle_r = 78
-    dir_n = xy_sys(vec_from_angle(angle_r),pos)
     
-    #print(f'from {angle(dir_n)}° xy_sys')
-
-    # stop condition: setting target_altitude
-    avg_acc_grav = 0.5 * ((G * (m_moon/((np.linalg.norm(pos))**2))) + (G * (m_moon/((r_moon + target_altitude)**2))))
-    acc_cent = abs(acc_centrifugal(pos,vel,scalar=True))
-    est_phase41_time = r_sys(vel,pos)[1] / (avg_acc_grav - acc_cent)
-    estimated_alt_gain = 0.5 * r_sys(vel,pos)[1] * est_phase41_time
-
-    while (altitude(pos) < (target_altitude - estimated_alt_gain)):
-
-        dir_n = xy_sys(vec_from_angle(angle_r),pos)
-
-        avg_acc_grav = 0.5 * ((G * (m_moon/((np.linalg.norm(pos))**2))) + (G * (m_moon/((r_moon + target_altitude)**2))))
-        acc_cent = abs(acc_centrifugal(pos,vel,scalar=True))
-        est_phase41_time = r_sys(vel,pos)[1] / (avg_acc_grav - acc_cent)
-        estimated_alt_gain = 0.5 * r_sys(vel,pos)[1] * est_phase41_time
-
-        time, pos, vel, acc, m, engine_on = phys_sim_step(time,t_step,pos,vel,acc,m,mass_dry, m_flow, EEV, dir_n,engine_on) # pysical sim step
-
-        log(csv_writer,time,pos,vel,acc,m,dir_n) # log every x [ms]
-
     
-    #print(f'to   {angle(dir_n)}° xy_sys')
-    #plot_vector(dir_n)
-
-    phase40_end = time 
-    #print(f'Phase 4.0 finished at {phase40_end} s')
-
+    
     alt = altitude(pos)
-    """
-    print(f'> fuel mass used until here {mass_full - m} kg')
-    print(f'> Altitude {alt} m reached, {estimated_alt_gain} m  gain expected at 4.1 in {est_phase41_time}s')
-    print(f'> Orbital velocity {orbital_velocity(alt)} m/s needed')
-
-
-    # Phase 4.1: Orbit injection - bring vel_r = 0
-    print('''
-    ┌───────────┬────────────────────────────┐
-    │ Phase 4.1 │   90° burn until vel_r = 0 │
-    └───────────┴────────────────────────────┘''')
-    """
-    angle_r = 90
-    dir_n = xy_sys(vec_from_angle(angle_r),pos)
-    #print(f'from {angle(dir_n)}° xy_sys')
-
-    # stopping condition: radial velocity (vel_r)
-
-    while r_sys(vel,pos)[1] > 0: 
-
-        dir_n = xy_sys(vec_from_angle(angle_r),pos)
-
-        time, pos, vel, acc, m, engine_on = phys_sim_step(time,t_step,pos,vel,acc,m,mass_dry, m_flow, EEV, dir_n,engine_on) # pysical sim step
-
-        log(csv_writer,time,pos,vel,acc,m,dir_n) # log every x [ms]
-
-
-    #print(f'to   {angle(dir_n)}° xy_sys')
-    #plot_vector(dir_n)
-
-    phase41_end = time 
-    #print(f'Phase 4.1 finished at {phase41_end} s')
-
-    alt = altitude(pos)
-    """
-    print(f'> fuel mass used until here {mass_full - m} kg')
-    print(f'> Estimation Error: {est_phase41_time-(phase41_end-phase40_end)} s')
-    print(f'> Altitude {alt} m reached')
-    print(f'> Orbital velocity {orbital_velocity(alt)} m/s needed')
-    print(f'> current Orbital velocity {r_sys(vel,pos)[0]} m/s')
-
-
-
-    # Phase 4: Orbit injection
-    print('''
-    ┌───────────┬─────────────────────────────────────────────┐
-    │ Phase 4.3 │   orbit injection, constant altitude burn   │
-    └───────────┴─────────────────────────────────────────────┘''')
-    """
     # init Controller to hold current altitude
-    PID = PID_Controller(altitude(pos), t_step)
+    PID = PID_Controller(target_altitude, t_step, f_lin_p_val(start_altitude), 0.000000001, f_lin_d_val(start_altitude)) #altitude(pos)
+    
     """
     print(f'> current Altitude {alt} m')
     print('''
@@ -534,22 +471,12 @@ def simulation(t_step,target_altitude,mass_dry,mass_full):
     """
 
     fuel_used = mass_full - m
+    deltaV_result = deltaV(fuel_used,mass_full,EEV)
+    downrange_result = (downrange_distance(pos)/1000)
 
     
-    result_table = f'''
-    ┌───────────────────────────────────────────────────────────┐
-    │                        RESULT TABLE                       │
-    ├───────────────────────────────────────────────────────────┤
-    │ time           {time:8.3f} [s]      Apollo:    438     [s]   │
-    │ used Fuel      {fuel_used:8.3f} [kg]     Apollo:   2238     [kg]  │
-    │ delta V        {deltaV(fuel_used,mass_full,EEV):8.3f} [m/s]    Apollo:   1847     [m/s] │
-    │ downrange dist {(downrange_distance(pos)/1000):8.3f} [km]     Apollo:    268.76  [km]  │
-    │ altitude       {altitude(pos):8.3f} [m]      Apollo:  18288     [m]   │
-    │ phi velocity   {r_sys(vel,pos)[0]:8.3f} [m/s]    Apollo:  16866.6   [m/s] │
-    │ r velocity     {r_sys(vel,pos)[1]:8.3f} [m/s]    Apollo:      9.815 [m/s] │
-    └───────────────────────────────────────────────────────────┘
-    '''
-    result_table = fuel_used
+    result_body = f'{{ "time":{time}, "fuel_used":{fuel_used}, "deltaV":{deltaV_result}, "downrange_distance": {downrange_result}, "altitude":{altitude(pos)}, "vel_phi":{r_sys(vel,pos)[0]},"vel_r":{r_sys(vel,pos)[1]} }}'
+
 
     """
     print('''
@@ -582,22 +509,131 @@ def simulation(t_step,target_altitude,mass_dry,mass_full):
     df = pd.read_csv(output)
     df = df.set_index('time [s]')
     
-    return result_table, df
+    
+    # plotting path
+    if False:
+        # plot path cartesian
+        dpi = 72
+
+        #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10),dpi=dpi)
+
+        # Create 2x2 sub plots
+        gs = gridspec.GridSpec(ncols=3, nrows=1,width_ratios=[1,20,2.5])
+
+        pl.figure(figsize=(40,10))
 
 
-def bind_simulation(init_elevation):
+        # left
+        ax = pl.subplot(gs[0, 0]) # row 0, col 0
 
-    result_table, df = simulation(t_step=0.01,
-                                   target_altitude=2000,
+        offset_y = r_moon
+        # moon surface
+        t = np.linspace(0.49*np.pi,0.51*np.pi,1000)
+        pl.plot(r_moon*np.cos(t), r_moon*np.sin(t)-offset_y,color='grey', linewidth=2)
+
+        xpoints = df.loc[0.0:phase3_end+2]['pos_x [m]']
+        ypoints = df.loc[0.0:phase3_end+2]['pos_y [m]']
+
+        max_x = np.max(xpoints)
+        max_y = np.max(ypoints-offset_y)
+        min_x = np.min(xpoints)
+        min_y = np.min(ypoints-offset_y)
+
+        pad_y = 1e1
+        pad_x = 1e2
+
+        ax.set_xlim(min_x-pad_x, max_x)
+        ax.set_ylim(min_y-pad_y, max_y+pad_y)
+
+        ax.set_aspect('equal', adjustable='box')
+        ax.grid(True)
+        pl.plot(xpoints[:round(phase1_end+1)],ypoints[:round(phase1_end+1)]-offset_y                                  , color='deeppink') # phase 1
+        pl.plot(xpoints[round(phase1_end):round(phase2_end+1)],ypoints[round(phase1_end):round(phase2_end+1)]-offset_y, color='magenta') # phase 2
+        pl.plot(xpoints[round(phase2_end):round(phase3_end+1)],ypoints[round(phase2_end):round(phase3_end+1)]-offset_y, color='darkviolet') # phase 3
+        pl.plot(xpoints[round(phase3_end):],ypoints[round(phase3_end):]-offset_y                        ,color='tab:blue') # phase 4
+
+        #middle
+        ax = pl.subplot(gs[0, 1])
+
+        t = np.linspace(0.45*np.pi,0.51*np.pi,1000)
+        pl.plot(r_moon*np.cos(t), r_moon*np.sin(t)-offset_y,color='grey', linewidth=2)
+
+        xpoints = df.loc[phase3_end:phase4_end]['pos_x [m]']
+        ypoints = df.loc[phase3_end:phase4_end]['pos_y [m]']
+
+        max_x = np.max(xpoints)
+        max_y = np.max(ypoints-offset_y)
+        min_x = np.min(xpoints)
+        min_y = np.min(ypoints-offset_y)
+
+        pad_y = 1e4
+        pad_x = 1e3
+
+        ax.set_xlim(min_x-pad_x, max_x)
+        ax.set_ylim(min_y-pad_y, max_y+pad_y)
+
+        ax.set_aspect('equal', adjustable='box')
+        ax.grid(True)
+        pl.plot(xpoints,ypoints-offset_y,color='tab:blue', linewidth=2) # phase 4
+
+        xpoints = df.loc[:phase3_end]['pos_x [m]']
+        ypoints = df.loc[:phase3_end]['pos_y [m]']
+
+        pl.plot(xpoints,ypoints-offset_y, linewidth=2, color='magenta') # until phase 4
+
+        # right
+        ax = pl.subplot(gs[0, 2]) # row 0, col 1
+        pl.plot([0,1])
+
+        # moon surface
+        t = np.linspace(0,2*np.pi,100)
+        pl.plot(r_moon*np.cos(t), r_moon*np.sin(t),color='grey', linewidth=2)
+
+        xpoints_prop = df.loc[phase4_end:]['pos_x [m]']
+        ypoints_prop = df.loc[phase4_end:]['pos_y [m]']
+        pl.plot(xpoints_prop,ypoints_prop, color='tab:green', linewidth=1) # propagate
+
+        xpoints = df.loc[0.0:phase4_end]['pos_x [m]']
+        ypoints = df.loc[0.0:phase4_end]['pos_y [m]']
+        pl.plot(xpoints,ypoints, linewidth=2 ) # start
+
+        ext = np.max(np.abs([ df['pos_x [m]'],df['pos_y [m]']]))
+
+        ax.set_ylim(-ext, ext)
+        ax.set_xlim(-ext, ext)
+        ax.set_aspect('equal', adjustable='box')
+        ax.grid(True)
+
+        plt.savefig('doc/img/launch_segment.png',bbox_inches='tight',dpi=300)
+        #plt.axis('off')
+        plt.show()
+
+        # plot result properties graphs
+
+        df[['altitude [m]','vel_r [m/s]','vel_phi [m/s]','acc_r [m/s²]','acc_phi [m/s²]','dir_n [°]']].plot(subplots=True,figsize=(25,20),grid=True,xlim=[0, df.index[-1]])
+        #df.plot(subplots=True,figsize=(20,25))
+        plt.show()
+    
+    return result_body, df
+
+
+def bind_simulation(start_altitude,target_altitude, t_step, mass_full, m_flow, single_mode=False):
+
+    result_body, df = simulation( t_step=t_step,
+                                   start_altitude=start_altitude,
+                                   target_altitude=target_altitude,
                                    mass_dry=1600,
-                                   mass_full=8500)
-
-    return result_table
+                                   mass_full=mass_full,
+                                   m_flow=m_flow,
+                                   single_mode=single_mode)
+        
+    
+    return result_body
 
 ########################################################################################################
 
 
-def save_to_netcdf(data,Longitude,Latitude,copy=False):
+def save_to_netcdf(data,Longitude,Latitude,filename,copy=False):
     
     xA = xr.DataArray(
             data=data,
@@ -613,9 +649,9 @@ def save_to_netcdf(data,Longitude,Latitude,copy=False):
             ),
         )
     if copy:
-        xA.to_netcdf("maps/Launch_Segement_copy" + str(random.randint(100000, 999999)) + ".nc")
+        xA.to_netcdf( filename + "_copy" + str(random.randint(100000, 999999)) + ".nc")
     else:
-        xA.to_netcdf("maps/Launch_Segement.nc")
+        xA.to_netcdf( filename + ".nc")
 
 def map_data(data_flat,Longitude,Latitude):
     
@@ -633,29 +669,67 @@ if __name__ == '__main__':
     
     # fetch arguments
     try:
-        arg = literal_eval(sys.argv[1])
+        filename = sys.argv[1]
     except:
-        print('ERROR! argument required to run. shape: [Lon,Lat,init]')
+        print('ERROR! arguments required, call -h for help')
         sys.exit()
         
-    #print('Argument:',arg)
+    if filename in ['-h','-H','-help','help']:
+        print('printing help')
+        sys.exit()
+    
+    try:
+        arg = literal_eval(sys.argv[2])
+    except:
+        print('ERROR! argument required to run. shape: [Lon,Lat,init]')
+        print(literal_eval(sys.argv[2]))
+        sys.exit()
+        
     
     Longitude = np.array(arg[0], dtype=np.short)
     Latitude  = np.array(arg[1], dtype=np.short)
-    init_value = arg[2]
-
-    #######################
-    # RUN MULTIPROCESSING #
-    #######################
-    with Pool() as p:
-        result_flat = p.map(bind_simulation, init_value)
-        
-    result = map_data(result_flat,Longitude,Latitude)
+    t_step = arg[2]
+    mass_full = arg[3]
+    start_altitude = arg[4]
+    target_altitude = arg[5]
+    m_flow = arg[6]
     
-    try:
-        save_to_netcdf(result,Longitude,Latitude)
-        print("Done.")
-    except:
-        print('ERROR! saving failed, check if file is in use.')
-        save_to_netcdf(result,Longitude,Latitude,copy=True)
-        print('BACKUP saving as copy.')
+    """
+    print(f'filename {filename}')
+    print(f'Longitude {Longitude}')
+    print(f'Latitude {Latitude}')
+    print(f't_step {t_step}')
+    print(f'mass_full {mass_full}')
+    print(f'start_altitude {start_altitude}')
+    """
+    single_mode = False
+    if filename == "single_mode":
+        single_mode = True
+        
+    if single_mode:
+        #######################
+        # RUN  SINGLE-MODE    #
+        #######################
+        
+        if isinstance(start_altitude, list): start_altitude = start_altitude[0]
+        if isinstance(t_step, list): t_step = t_step[0]
+        if isinstance(mass_full, list): mass_full = mass_full[0]
+        
+        print(bind_simulation(start_altitude,target_altitude,t_step,mass_full, m_flow, single_mode=True))
+    
+    else:
+        #######################
+        # RUN MULTIPROCESSING #
+        #######################
+        with Pool() as p:
+            _ , result_flat = p.starmap(bind_simulation, zip(start_altitude,repeat(target_altitude), repeat(t_step), repeat(mass_full), repeat(m_flow)))
+
+        result = map_data(result_flat,Longitude,Latitude)
+
+        try:
+            save_to_netcdf(result,Longitude,Latitude,filename)
+            print("Done.")
+        except:
+            print('ERROR! saving failed, check if file is in use.')
+            save_to_netcdf(result,Longitude,Latitude,filename,copy=True)
+            print('BACKUP saving as copy.')
