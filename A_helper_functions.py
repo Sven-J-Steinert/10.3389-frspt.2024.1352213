@@ -4,6 +4,8 @@ import numpy as np
 import math
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pl
+import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm
@@ -27,6 +29,12 @@ import geopandas
 import shapely
 shapely.geos.geos_version
 from shapely.ops import cascaded_union
+
+# globar variables
+
+r_moon = 1737400    # [m] volumetric mean radius of the moon = reference height from heightmap
+m_moon = 0.07346e24 # [kg] mass of the moon
+G = 6.67430e-11 # Gravitational constant
 
 # helper functions
 
@@ -117,6 +125,7 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
 
             # to have suitable ticks on cbar: find range from  [min .. max]
             # devide it into steps 1 order lower than difference results in ~10 ticks
+            
             delta = (max_value/value_devider) - (min_value/value_devider)
             print('orderOfMagnitude(delta)',orderOfMagnitude(delta))
             maximum_flat_tick = 10**orderOfMagnitude(delta)
@@ -192,3 +201,111 @@ def plot_histogram(x,color):
     plt.show()
     plt.close()
     
+    
+def plot_launch_segment(df):
+    phase1_end = 10
+    phase2_end = 15
+    phase3_end = 20
+    phase4_end = len(df)
+
+    # plot path cartesian
+    dpi = 72
+
+    #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10),dpi=dpi)
+
+    # Create 2x2 sub plots
+    gs = gridspec.GridSpec(ncols=3, nrows=1,width_ratios=[1,20,2.5])
+
+    pl.figure(figsize=(40,10))
+
+
+    # left
+    ax = pl.subplot(gs[0, 0]) # row 0, col 0
+
+    offset_y = r_moon
+    # moon surface
+    t = np.linspace(0.49*np.pi,0.51*np.pi,1000)
+    pl.plot(r_moon*np.cos(t), r_moon*np.sin(t)-offset_y,color='grey', linewidth=2)
+
+    xpoints = df.loc[0.0:phase3_end+2]['pos_x [m]']
+    ypoints = df.loc[0.0:phase3_end+2]['pos_y [m]']
+
+    max_x = np.max(xpoints)
+    max_y = np.max(ypoints-offset_y)
+    min_x = np.min(xpoints)
+    min_y = np.min(ypoints-offset_y)
+
+    pad_y = 1e1
+    pad_x = 1e2
+
+    ax.set_xlim(min_x-pad_x, max_x)
+    ax.set_ylim(min_y-pad_y, max_y+pad_y)
+
+    ax.set_aspect('equal', adjustable='box')
+    ax.grid(True)
+    pl.plot(xpoints[:round(phase1_end+1)],ypoints[:round(phase1_end+1)]-offset_y                                  , color='deeppink') # phase 1
+    pl.plot(xpoints[round(phase1_end):round(phase2_end+1)],ypoints[round(phase1_end):round(phase2_end+1)]-offset_y, color='magenta') # phase 2
+    pl.plot(xpoints[round(phase2_end):round(phase3_end+1)],ypoints[round(phase2_end):round(phase3_end+1)]-offset_y, color='darkviolet') # phase 3
+    pl.plot(xpoints[round(phase3_end):],ypoints[round(phase3_end):]-offset_y                        ,color='tab:blue') # phase 4
+
+    #middle
+    ax = pl.subplot(gs[0, 1])
+
+    t = np.linspace(0.45*np.pi,0.51*np.pi,1000)
+    pl.plot(r_moon*np.cos(t), r_moon*np.sin(t)-offset_y,color='grey', linewidth=2)
+
+    xpoints = df.loc[phase3_end:phase4_end]['pos_x [m]']
+    ypoints = df.loc[phase3_end:phase4_end]['pos_y [m]']
+
+    max_x = np.max(xpoints)
+    max_y = np.max(ypoints-offset_y)
+    min_x = np.min(xpoints)
+    min_y = np.min(ypoints-offset_y)
+
+    pad_y = 1e4
+    pad_x = 1e3
+
+    ax.set_xlim(min_x-pad_x, max_x)
+    ax.set_ylim(min_y-pad_y, max_y+pad_y)
+
+    ax.set_aspect('equal', adjustable='box')
+    ax.grid(True)
+    pl.plot(xpoints,ypoints-offset_y,color='tab:blue', linewidth=2) # phase 4
+
+    xpoints = df.loc[:phase3_end]['pos_x [m]']
+    ypoints = df.loc[:phase3_end]['pos_y [m]']
+
+    pl.plot(xpoints,ypoints-offset_y, linewidth=2, color='magenta') # until phase 4
+
+    # right
+    ax = pl.subplot(gs[0, 2]) # row 0, col 1
+    pl.plot([0,1])
+
+    # moon surface
+    t = np.linspace(0,2*np.pi,100)
+    pl.plot(r_moon*np.cos(t), r_moon*np.sin(t),color='grey', linewidth=2)
+
+    xpoints_prop = df.loc[phase4_end:]['pos_x [m]']
+    ypoints_prop = df.loc[phase4_end:]['pos_y [m]']
+    pl.plot(xpoints_prop,ypoints_prop, color='tab:green', linewidth=1) # propagate
+
+    xpoints = df.loc[0.0:phase4_end]['pos_x [m]']
+    ypoints = df.loc[0.0:phase4_end]['pos_y [m]']
+    pl.plot(xpoints,ypoints, linewidth=2 ) # start
+
+    ext = np.max(np.abs([ df['pos_x [m]'],df['pos_y [m]']]))
+
+    ax.set_ylim(-ext, ext)
+    ax.set_xlim(-ext, ext)
+    ax.set_aspect('equal', adjustable='box')
+    ax.grid(True)
+
+    plt.savefig('doc/img/launch_segment.png',bbox_inches='tight',dpi=300)
+    #plt.axis('off')
+    plt.show()
+
+    # plot result properties graphs
+
+    df[['altitude [m]','vel_r [m/s]','vel_phi [m/s]','acc_r [m/s²]','acc_phi [m/s²]','dir_n [°]']].plot(subplots=True,figsize=(25,20),grid=True,xlim=[0, df.index[-1]])
+    #df.plot(subplots=True,figsize=(20,25))
+    plt.show()
