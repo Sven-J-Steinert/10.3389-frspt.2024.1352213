@@ -35,6 +35,7 @@ from shapely.ops import cascaded_union
 r_moon = 1737400    # [m] volumetric mean radius of the moon = reference height from heightmap
 m_moon = 0.07346e24 # [kg] mass of the moon
 G = 6.67430e-11 # Gravitational constant
+g_0 = 9.80665 # [kg/s²] standard gravity
 
 # helper functions
 
