@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
+import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm
 
@@ -91,7 +92,7 @@ def read_im_values(im,value_divider):
     return x
 
         
-def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False):
+def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',center_zero=False,i_steps=None):
     
         if not labelsize: labelsize = 20
     
@@ -108,7 +109,8 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
         
         ax = plt.gca()
         if bw: im = ax.imshow(values, cmap='gray', interpolation='None', extent=[Lon_min,Lon_max,Lat_min,Lat_max])
-        else: im = ax.imshow(values, cmap='viridis', interpolation='None', extent=[Lon_min,Lon_max,Lat_min,Lat_max])
+        else:
+            im = ax.imshow(values, cmap=cmap, interpolation='None', extent=[Lon_min,Lon_max,Lat_min,Lat_max])
             
         plt.xticks(np.arange(Lon_min, Lon_max+1, Lon_max/4))
         plt.yticks(np.arange(Lat_min, Lat_max+1, Lat_max/2))
@@ -122,8 +124,6 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             cbar = plt.colorbar(im, cax=cax)
             cbar.ax.set_ylabel(value_label, rotation=90, size=labelsize)
 
-            #labels = np.append(np.arange(min_value, max_value, value_devider), max_value)
-
             # to have suitable ticks on cbar: find range from  [min .. max]
             # devide it into steps 1 order lower than difference results in ~10 ticks
             
@@ -132,10 +132,18 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             maximum_flat_tick = 10**orderOfMagnitude(delta)
             one_step = (maximum_flat_tick/10) * value_devider
             min_flat_value = 10**orderOfMagnitude(min_value/value_devider)*value_devider
+            print(f'min_flat_value {min_flat_value}')
             
             if not mass:
                 print('inside normal bottom scaling')
-                labels = np.append( np.arange(min_value, max_value, one_step), max_value)
+                inter_steps = np.arange(min_value, max_value, one_step)[1:]
+                print('inter_steps',len(inter_steps),inter_steps)
+                if len(inter_steps) > 15:
+                    inter_steps = np.delete(inter_steps, np.arange(0, inter_steps.size, 2)) # delete every second step
+                print('inter_steps',len(inter_steps),inter_steps)
+                if center_zero: inter_steps = np.append(inter_steps, 0) # add Zero
+                if i_steps: inter_steps = i_steps
+                labels = np.append( np.append(min_value, inter_steps), max_value)
             else:
                 print('inside weird bottom scaling')
                 while min_flat_value - (min_value + one_step) < 0 : min_flat_value += one_step
@@ -145,8 +153,7 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
                 
 
             print('image value spread',labels)
-            loc    = labels
-
+            loc = labels
             cbar.set_ticks(loc)
 
             if labels[0] == round(labels[0]):
@@ -310,3 +317,13 @@ def plot_launch_segment(df):
     df[['altitude [m]','vel_r [m/s]','vel_phi [m/s]','acc_r [m/s²]','acc_phi [m/s²]','dir_n [°]']].plot(subplots=True,figsize=(25,20),grid=True,xlim=[0, df.index[-1]])
     #df.plot(subplots=True,figsize=(20,25))
     plt.show()
+    
+
+class MidpointNormalize(colors.Normalize):
+    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+        self.midpoint = midpoint
+        colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+        return np.ma.masked_array(np.interp(value, x, y))
