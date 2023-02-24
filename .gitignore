@@ -1,7 +1,9 @@
 .ipynb_checkpoints
+__pycache__
 doc
 venv
 sources
+GMAT
 STK
 maps\preparation\TiO2\old
 tools
