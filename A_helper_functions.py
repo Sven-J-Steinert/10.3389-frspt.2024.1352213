@@ -9,7 +9,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 from PIL import Image, ImageTk, ImageMath, ImageOps
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -39,6 +39,17 @@ G = 6.67430e-11 # Gravitational constant
 g_0 = 9.80665 # [kg/s²] standard gravity
 
 # helper functions
+
+def LatLonfromShape(shape):
+    Lat = np.zeros(shape[0])
+    for i in range(shape[0]):
+        Lat[i] = 90 - i * 180/len(Lat) - 0.5* 180/len(Lat)
+
+    Lon = np.zeros(shape[1])
+    for i in range(shape[1]):
+        Lon[i] = 180 - i * 180/len(Lon) - 0.5* 180/len(Lon)
+    Lon = np.flip(Lon)
+    return Lat, Lon
 
 def orderOfMagnitude(number):
     return math.floor(math.log(abs(number), 10))
@@ -92,7 +103,7 @@ def read_im_values(im,value_divider):
     return x
 
         
-def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',center_zero=False,i_steps=None):
+def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',center_zero=False,i_steps=None,silent=False):
     
         if not labelsize: labelsize = 20
     
@@ -102,8 +113,8 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
         min_value = np.min(values)
         max_value = np.max(values)
         
-        print("display values",values.shape[::-1])
-        print("extrema",min_value,max_value)
+        if not silent: print("display values",values.shape[::-1])
+        if not silent: print("extrema",min_value,max_value)
         
         plt.figure(figsize=(12,6), dpi=dpi)
         
@@ -128,31 +139,31 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             # devide it into steps 1 order lower than difference results in ~10 ticks
             
             delta = (max_value/value_devider) - (min_value/value_devider)
-            print('orderOfMagnitude(delta)',orderOfMagnitude(delta))
+            if not silent: print('orderOfMagnitude(delta)',orderOfMagnitude(delta))
             maximum_flat_tick = 10**orderOfMagnitude(delta)
             one_step = (maximum_flat_tick/10) * value_devider
             min_flat_value = 10**orderOfMagnitude(min_value/value_devider)*value_devider
-            print(f'min_flat_value {min_flat_value}')
+            if not silent: print(f'min_flat_value {min_flat_value}')
             
             if not mass:
-                print('inside normal bottom scaling')
+                if not silent: print('inside normal bottom scaling')
                 inter_steps = np.arange(min_value, max_value, one_step)[1:]
-                print('inter_steps',len(inter_steps),inter_steps)
+                if not silent: print('inter_steps',len(inter_steps),inter_steps)
                 if len(inter_steps) > 15:
                     inter_steps = np.delete(inter_steps, np.arange(0, inter_steps.size, 2)) # delete every second step
-                print('inter_steps',len(inter_steps),inter_steps)
+                if not silent: print('inter_steps',len(inter_steps),inter_steps)
                 if center_zero: inter_steps = np.append(inter_steps, 0) # add Zero
-                if i_steps: inter_steps = i_steps
+                if i_steps is not None: inter_steps = i_steps
                 labels = np.append( np.append(min_value, inter_steps), max_value)
             else:
-                print('inside weird bottom scaling')
+                if not silent: print('inside weird bottom scaling')
                 while min_flat_value - (min_value + one_step) < 0 : min_flat_value += one_step
-                print('max_value',max_value)
+                if not silent: print('max_value',max_value)
                 labels = np.append(np.append(min_value, np.arange(min_flat_value, max_value, one_step )), max_value)
-                print(labels)
+                if not silent: print(labels)
                 
 
-            print('image value spread',labels)
+            if not silent: print('image value spread',labels)
             loc = labels
             cbar.set_ticks(loc)
 
@@ -187,7 +198,7 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
                     elif i == len(labels)-1: formatted_labels.append('{:.2f}'.format(x))
                     else: formatted_labels.append('{:.0f}'.format(x))
                     
-            print('value_divided spread',formatted_labels)
+            if not silent: print('value_divided spread',formatted_labels)
 
             cbar.set_ticklabels(formatted_labels)
         
