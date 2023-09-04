@@ -103,7 +103,7 @@ def read_im_values(im,value_divider):
     return x
 
         
-def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',center_zero=False,i_steps=None,silent=False):
+def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',interpolation=None,return_data=False,center_zero=False,i_steps=None,silent=False):
     
         if not labelsize: labelsize = 20
     
@@ -119,9 +119,9 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
         plt.figure(figsize=(12,6), dpi=dpi)
         
         ax = plt.gca()
-        if bw: im = ax.imshow(values, cmap='gray', interpolation='None', extent=[Lon_min,Lon_max,Lat_min,Lat_max])
+        if bw: im = ax.imshow(values, cmap='gray', interpolation=str(interpolation), extent=[Lon_min,Lon_max,Lat_min,Lat_max])
         else:
-            im = ax.imshow(values, cmap=cmap, interpolation='None', extent=[Lon_min,Lon_max,Lat_min,Lat_max])
+            im = ax.imshow(values, cmap=cmap, interpolation=str(interpolation), extent=[Lon_min,Lon_max,Lat_min,Lat_max])
             
         plt.xticks(np.arange(Lon_min, Lon_max+1, Lon_max/4))
         plt.yticks(np.arange(Lat_min, Lat_max+1, Lat_max/2))
@@ -203,8 +203,14 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             cbar.set_ticklabels(formatted_labels)
         
         if save: plt.savefig("doc/img/" + save, bbox_inches='tight',pad_inches = 0)
-        
+            
         plt.show()
+
+        if return_data: # return interpolated values if asked
+            #plt.imshow(values, interpolation=str(interpolation), cmap='viridis')
+            #interpolated_data = plt.gci().get_array()
+            return ax.get_images()[0].get_array() 
+            
         plt.close()
         
 def plot_histogram(x,color):

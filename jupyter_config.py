@@ -1,0 +1,1 @@
+c.NotebookApp.ResourceUseDisplay.mem_limit = 8000000000
