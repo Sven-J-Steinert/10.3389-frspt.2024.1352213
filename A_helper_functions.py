@@ -40,6 +40,9 @@ g_0 = 9.80665 # [kg/s²] standard gravity
 
 # helper functions
 
+def info(dataset):
+    print(f'{dataset.dtype} {dataset.shape} data range: {np.min(dataset)} - {np.max(dataset)}')
+
 def LatLonfromShape(shape):
     Lat = np.zeros(shape[0])
     for i in range(shape[0]):
