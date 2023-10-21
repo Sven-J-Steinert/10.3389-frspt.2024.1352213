@@ -1,6 +1,7 @@
 .ipynb_checkpoints/
 __pycache__
 doc
+bib
 venv
 sources
 GMAT
