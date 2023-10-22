@@ -1,10 +1,14 @@
 .ipynb_checkpoints/
 __pycache__
-doc
 bib
+doc/Frontiers
+doc/.ipynb_checkpoints
 venv
 sources
 GMAT
 STK
 maps\preparation\TiO2\old
 tools
+doc/Frontiers_LaTeX_Templates.zip
+doc/img/ISRU_COST_GLOBAL_raw.pdf
+doc/img/heightmap_raw.pdf
