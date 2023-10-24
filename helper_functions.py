@@ -106,7 +106,7 @@ def read_im_values(im,value_divider):
     return x
 
         
-def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',interpolation=None,return_data=False,center_zero=False,i_steps=None,silent=False):
+def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',interpolation=None,return_data=False,center_zero=False,i_steps=None,y_limit=None,silent=False):
     
         if not labelsize: labelsize = 20
     
@@ -148,23 +148,16 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             one_step = (maximum_flat_tick/10) * value_devider
             min_flat_value = 10**orderOfMagnitude(min_value/value_devider)*value_devider
             if not silent: print(f'min_flat_value {min_flat_value}')
-            
-            if not mass:
-                if not silent: print('inside normal bottom scaling')
-                inter_steps = np.arange(min_value, max_value, one_step)[1:]
-                if not silent: print('inter_steps',len(inter_steps),inter_steps)
-                if len(inter_steps) > 15:
-                    inter_steps = np.delete(inter_steps, np.arange(0, inter_steps.size, 2)) # delete every second step
-                if not silent: print('inter_steps',len(inter_steps),inter_steps)
-                if center_zero: inter_steps = np.append(inter_steps, 0) # add Zero
-                if i_steps is not None: inter_steps = i_steps
-                labels = np.append( np.append(min_value, inter_steps), max_value)
-            else:
-                if not silent: print('inside weird bottom scaling')
-                while min_flat_value - (min_value + one_step) < 0 : min_flat_value += one_step
-                if not silent: print('max_value',max_value)
-                labels = np.append(np.append(min_value, np.arange(min_flat_value, max_value, one_step )), max_value)
-                if not silent: print(labels)
+
+            if not silent: print('inside normal bottom scaling')
+            inter_steps = np.arange(min_value, max_value, one_step)[1:]
+            if not silent: print('inter_steps',len(inter_steps),inter_steps)
+            if len(inter_steps) > 15:
+                inter_steps = np.delete(inter_steps, np.arange(0, inter_steps.size, 2)) # delete every second step
+            if not silent: print('inter_steps',len(inter_steps),inter_steps)
+            if center_zero: inter_steps = np.append(inter_steps, 0) # add Zero
+            if i_steps is not None: inter_steps = i_steps
+            labels = np.append( np.append(min_value, inter_steps), max_value)
                 
 
             if not silent: print('image value spread',labels)
@@ -208,6 +201,9 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             
             ax.set_xlabel('Longitude $\lambda \ [\mathrm{deg}]$',fontsize=labelsize)
             ax.set_ylabel('Latitude $\phi \ [\mathrm{deg}]$',fontsize=labelsize)
+
+            if y_limit:
+                ax.set_ylim(y_limit[0], y_limit[1])    
         
         if save: plt.savefig("doc/img/" + save, bbox_inches='tight',pad_inches = 0)
         
