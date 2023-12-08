@@ -1,6 +1,6 @@
 # Location dependent flight cost differences from the lunar surface to an orbital fuel depot and its influence on ISRU location selection
 
-| [<img src="https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/preview/00.png?raw=true" width="200">](https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/manuscript.pdf?raw=true)  | Download the full .PDF <br> (click on the image) | 
+| [<img src="https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/preview/00.png?raw=true" width="200">](https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/manuscript.pdf?raw=true)  | [Download the full .PDF](https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/manuscript.pdf?raw=true) | 
 | -------- | ------- |
 
 
