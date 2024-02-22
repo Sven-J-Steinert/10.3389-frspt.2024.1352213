@@ -106,7 +106,7 @@ def read_im_values(im,value_divider):
     return x
 
         
-def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',interpolation=None,return_data=False,center_zero=False,i_steps=None,y_limit=None,silent=False):
+def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None,save=None,bw=False,dpi=200,mass=False,labels=None,cmap='viridis',interpolation=None,return_data=False,center_zero=False,i_steps=None,y_limit=None,silent=False,gridcolor='gray'):
     
         if not labelsize: labelsize = 20
     
@@ -130,6 +130,7 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
         plt.xticks(np.arange(Lon_min, Lon_max+1, Lon_max/4))
         plt.yticks(np.arange(Lat_min, Lat_max+1, Lat_max/2))
         ax.tick_params(axis='both', which='major', labelsize=labelsize)
+        ax.grid(True, color=gridcolor, linestyle='-', linewidth=0.5)
         
         if not bw:
             # create an axes on the right side of ax. The width of cax will be 2%
@@ -203,8 +204,8 @@ def plot_map(values,value_devider,value_label,Lat_range,Lon_range,labelsize=None
             ax.set_ylabel('Latitude $\phi \ [\mathrm{deg}]$',fontsize=labelsize)
 
             if y_limit:
-                ax.set_ylim(y_limit[0], y_limit[1])    
-        
+                ax.set_ylim(y_limit[0], y_limit[1])   
+                
         if save: plt.savefig("doc/img/" + save, bbox_inches='tight',pad_inches = 0)
         
         plt.show()
