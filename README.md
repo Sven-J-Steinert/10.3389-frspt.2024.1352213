@@ -1,8 +1,15 @@
-# Location dependent flight cost differences from the lunar surface to an orbital fuel depot and its influence on ISRU location selection
+# Location Dependent Flight Cost Differences from the Lunar Surface to an Orbital Fuel Depot and Its Influence on ISRU Location Selection
+
+**Frontiers in Space Technologies**
+<br>
+Space Exploration Volume 5 - 2024
+<br>
+doi: [10.3389/frspt.2024.1352213](https://doi.org/10.3389/frspt.2024.1352213)
+
+*Sven Julius Steinert, Paul Zabel, Dominik Quantius*
 
 | [<img src="https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/preview/00.png?raw=true" width="200">](https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/manuscript.pdf?raw=true)  | [Download the full .PDF](https://github.com/Sven-J-Steinert/DLR_Paper_2023/blob/master/manuscript.pdf?raw=true) | 
 | -------- | ------- |
-
 
 ## Abstract
 With increasing relevance for lunar activities, the location selection for ISRU facilities is a necessary step to identify the most suitable configuration during mission planning.
