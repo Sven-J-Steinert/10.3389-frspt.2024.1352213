@@ -67,4 +67,4 @@ The two influences, ISRU and transport are compared on their relevance for locat
 
 Transport costs have a marginal influence in the location selection in this case.
 
-<meta name="google-site-verification" content="-1c0KAcKr_41JSmhtyHW7pEGRx24TgL8XW81TI0piB4" />
+<meta name="google-site-verification" content="JJSLVVHRTa3-_HkAaNoBEYtCm7RiAjuba9XKOUl-aWQ" />
