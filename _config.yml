@@ -1,0 +1,7 @@
+# Build settings
+markdown: kramdown
+theme: jekyll-theme-minimal
+
+# Google Site Verification Meta Tag
+meta:
+  google-site-verification: "JJSLVVHRTa3-_HkAaNoBEYtCm7RiAjuba9XKOUl-aWQ"
