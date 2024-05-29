@@ -28,7 +28,7 @@ With increasing relevance for lunar activities, the location selection for in si
 ```
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 1000000000
-data = np.array(Image.open("maps/WAC_TIO2_GLOBAL.png")) / devider
+data = np.array(Image.open("maps/WAC_TIO2_GLOBAL.png")) / divider
 ```
 
 ### Load X-Array (.nc)
