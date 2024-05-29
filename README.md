@@ -1,4 +1,4 @@
-# Location dependent flight cost differences from the lunar surface to an orbital fuel depot and its influence on ISRU location selection
+# Location-dependent flight cost difference from the lunar surface to an orbital fuel depot and its influence on in situ resource utilisation location selection
 
 **Frontiers in Space Technologies**
 <br>
