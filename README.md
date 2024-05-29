@@ -8,7 +8,7 @@ doi: [10.3389/frspt.2024.1352213](https://doi.org/10.3389/frspt.2024.1352213)
 
 *Sven Julius Steinert, Paul Zabel, Dominik Quantius*
 
-| [<img src="https://raw.githubusercontent.com/Sven-J-Steinert/10.3389-frspt.2024.1352213/master/preview/00.png" width="200">](https://raw.githubusercontent.com/Sven-J-Steinert/10.3389-frspt.2024.1352213/master/manuscript.pdf?raw=true)  | [Download the full .PDF](https://raw.githubusercontent.com/Sven-J-Steinert/10.3389-frspt.2024.1352213/master/manuscript.pdf?raw=true)  | 
+| [<img src="https://raw.githubusercontent.com/Sven-J-Steinert/10.3389-frspt.2024.1352213/master/preview/00.png" width="200">](https://raw.githubusercontent.com/Sven-J-Steinert/10.3389-frspt.2024.1352213/master/manuscript.pdf?raw=true)  | [Download the full .PDF](https://www.frontiersin.org/articles/10.3389/frspt.2024.1352213/pdf)  | 
 | -------- | ------- |
 
 ## Abstract
